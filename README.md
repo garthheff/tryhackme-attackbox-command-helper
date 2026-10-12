@@ -41,7 +41,9 @@ For an `attackbox` item, set `requirePassword` to `true` if it needs the passwor
 
 ## Service ports and FTP
 
-Use the **Ports** menu to enter HTTP (80), HTTPS (443), FTP (21), or SSH (22) ports. Values persist across room visits and are independent of the reverse-shell/listener port. Commands use the current values at click time. SSH and SCP use the SSH setting for the AttackBox; web and FTP commands use the target IP.
+Set HTTP (80) and HTTPS (443) ports in **Gobuster**, FTP (21) in **FTP**, and SSH (22) in **Files**. Values persist across room visits and are independent of the reverse-shell/listener port. Commands use the current values at click time. SSH and SCP use the SSH setting for the AttackBox; web and FTP commands use the target IP.
+
+Each action requesting AttackBox information clears the saved AttackBox IP, username, and password and reads the information panel again. Target information and port settings are preserved. If refresh fails, the action does not copy commands using old credentials. There is no manual Clear button.
 
 All command templates also support `{{httpPort}}`, `{{httpsPort}}`, `{{ftpPort}}`, and `{{sshPort}}`. For example, `curl {{httpUrl}}/` includes the chosen HTTP port. URLs are based on the room's target IP.
 
