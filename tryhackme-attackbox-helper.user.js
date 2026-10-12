@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.14
+// @version      1.15
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
@@ -45,21 +45,15 @@
     }
 
     function promptForWordlist(kind) {
-        const choices = wordlistChoices[kind];
         const current = getWordlist(kind);
-        const currentIndex = choices.findIndex(function (choice) { return choice[1] === current; });
         const value = prompt(
-            'Select ' + kind + ' wordlist by number, or enter an absolute path:\n\n' +
-            choices.map(function (choice, index) { return (index + 1) + '. ' + choice[0]; }).join('\n') +
-            '\n\nCurrent: ' + current,
-            currentIndex >= 0 ? String(currentIndex + 1) : current
+            'Custom ' + kind + ' wordlist absolute path:', current
         );
         if (value === null) return;
         const entered = value.trim();
-        const choice = /^\d+$/.test(entered) ? choices[Number(entered) - 1] : null;
-        const path = choice ? choice[1] : entered;
+        const path = entered;
         if (!path.startsWith('/') || /[\r\n\0]/.test(path)) {
-            alert('Choose a listed number or enter an absolute wordlist path.');
+            alert('Enter an absolute wordlist path.');
             return;
         }
         localStorage.setItem('thm_wordlist:' + kind, path);
@@ -850,8 +844,8 @@
     function makeMenuButton(label, options) {
         if (label === 'Gobuster') {
             options = [
-                { label: 'Set web wordlist (Gobuster / FFUF)', action: function () { promptForWordlist('web'); } },
-                { label: 'Set DNS / VHost wordlist', action: function () { promptForWordlist('dns'); } },
+                { label: 'Set web wordlist (Gobuster / FFUF)', wordlistKind: 'web' },
+                { label: 'Set DNS / VHost wordlist', wordlistKind: 'dns' },
                 { separator: true }
             ].concat(options);
         }
@@ -903,6 +897,54 @@
         });
 
         options.forEach(function (option) {
+            if (option.wordlistKind) {
+                const kind = option.wordlistKind;
+                const section = document.createElement('details');
+                const summary = document.createElement('summary');
+                summary.style.padding = '7px 10px';
+                summary.style.color = 'white';
+                summary.style.background = '#21262d';
+                summary.style.borderRadius = '5px';
+                summary.style.cursor = 'pointer';
+                summary.style.fontSize = '12px';
+                section.appendChild(summary);
+                const choices = document.createElement('div');
+                choices.style.display = 'flex';
+                choices.style.flexDirection = 'column';
+                choices.style.gap = '4px';
+                choices.style.padding = '5px 0 5px 12px';
+                const buttons = [];
+                function updateSelection() {
+                    const current = getWordlist(kind);
+                    const selected = wordlistChoices[kind].find(function (choice) { return choice[1] === current; });
+                    summary.innerText = option.label + ': ' + (selected ? selected[0].split(' — ')[0] : 'Custom');
+                    summary.title = current;
+                    buttons.forEach(function (entry) {
+                        const active = entry.path === current;
+                        entry.button.innerText = (active ? '✓ ' : '') + entry.label;
+                        entry.button.setAttribute('aria-pressed', String(active));
+                    });
+                }
+                wordlistChoices[kind].forEach(function (choice) {
+                    const preset = makeBarControlButton(choice[0], choice[1], function () {
+                        localStorage.setItem('thm_wordlist:' + kind, choice[1]);
+                        updateSelection();
+                        section.open = false;
+                    });
+                    preset.style.textAlign = 'left';
+                    buttons.push({ button: preset, label: choice[0], path: choice[1] });
+                    choices.appendChild(preset);
+                });
+                choices.appendChild(makeBarControlButton('Custom path…', 'Enter an absolute wordlist path', function () {
+                    promptForWordlist(kind);
+                    updateSelection();
+                }));
+                section.addEventListener('toggle', updateSelection);
+                updateSelection();
+                section.appendChild(choices);
+                menu.appendChild(section);
+                return;
+            }
             if (option.separator) {
                 const separator = document.createElement('div');
 

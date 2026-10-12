@@ -41,7 +41,7 @@ For an `attackbox` item, set `requirePassword` to `true` if it needs the passwor
 
 ## Service ports and FTP
 
-The **Gobuster** menu has **Set web wordlist (Gobuster / FFUF)** and **Set DNS / VHost wordlist** options. Enter a preset number or a custom absolute path. Choices persist locally and are shell-quoted in copied commands. Web presets include DIRB common/big, DirBuster small/medium, SecLists common, RAFT small words, and RAFT medium directories. DNS presets include the SecLists top 5,000/20,000/110,000 subdomain lists. These paths were verified on the AttackBox; SecLists is installed under `/usr/share/wordlists/SecLists`.
+The **Gobuster** menu has expandable **Set web wordlist (Gobuster / FFUF)** and **Set DNS / VHost wordlist** sections. Expand a section and click a preset; the selected list is marked with a check. **Custom path…** lets you enter an absolute path. Choices persist locally and are shell-quoted in copied commands. Web presets include DIRB common/big, DirBuster small/medium, SecLists common, RAFT small words, and RAFT medium directories. DNS presets include the SecLists top 5,000/20,000/110,000 subdomain lists. These paths were verified on the AttackBox; SecLists is installed under `/usr/share/wordlists/SecLists`.
 
 Templates use `{{wordlist}}` for the selected web list and `{{dnsWordlist}}` for DNS/VHost lists. Do not add quotes around these placeholders: the helper quotes the paths. VHost commands require replacing `TARGET_DOMAIN` with the target's domain.
 
