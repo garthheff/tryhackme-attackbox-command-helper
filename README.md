@@ -10,7 +10,7 @@ Install `tryhackme-attackbox-helper.user.js` in Tampermonkey/Greasemonkey.
 
 The helper downloads the JSON at startup and caches it for 15 minutes. If GitHub is unavailable, it tries the last valid cached copy and then falls back to its built-in menus. Invalid JSON is rejected.
 
-Remote menu keys currently supported are `Files`, `Nmap`, `Gobuster`, `Reverse`, and `Listener`. Each item can be a heading, separator, or command:
+Remote menu keys currently supported are `Files`, `Nmap`, `Gobuster`, `FTP`, `Reverse`, and `Listener`. Each item can be a heading, separator, or command:
 
 ```json
 {
@@ -30,7 +30,7 @@ Supported contexts and placeholders:
 
 | Context | Available placeholders |
 | --- | --- |
-| `target` | `{{targetIp}}` |
+| `target` | `{{targetIp}}`, `{{httpUrl}}`, `{{httpsUrl}}`, `{{ftpUrl}}` |
 | `reverse` | `{{attackboxIp}}`, `{{port}}` |
 | `listener` | `{{port}}` |
 | `attackbox` | `{{attackboxIp}}`, `{{username}}`, `{{password}}` |
@@ -38,3 +38,13 @@ Supported contexts and placeholders:
 | `raw` | none required |
 
 For an `attackbox` item, set `requirePassword` to `true` if it needs the password. Remote JSON is treated only as data and is never evaluated as JavaScript.
+
+## Service ports and FTP
+
+Use the **Ports** menu to enter HTTP (80), HTTPS (443), FTP (21), or SSH (22) ports. Values persist across room visits and are independent of the reverse-shell/listener port. Commands use the current values at click time. SSH and SCP use the SSH setting for the AttackBox; web and FTP commands use the target IP.
+
+All command templates also support `{{httpPort}}`, `{{httpsPort}}`, `{{ftpPort}}`, and `{{sshPort}}`. For example, `curl {{httpUrl}}/` includes the chosen HTTP port. URLs are based on the room's target IP.
+
+The FTP menu includes interactive connection, anonymous login with lftp, anonymous listing/download with curl, and an Nmap anonymous-access check. Replace `REMOTE_FILE` and `LOCAL_FILE` in the download command. Commands are copied to the clipboard for you to run.
+
+To install this update, open [the raw userscript](https://raw.githubusercontent.com/garthheff/tryhackme-attackbox-command-helper/main/tryhackme-attackbox-helper.user.js) with your userscript manager enabled. Reload the room afterward. JSON changes are checked on page load once the 15-minute cache expires.

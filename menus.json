@@ -15,8 +15,25 @@
     {
       "label": "Common dirs",
       "context": "target",
-      "command": "gobuster dir -u http://{{targetIp}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-common.txt"
+      "command": "gobuster dir -u {{httpUrl}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-common.txt"
+    },
+    {
+      "label": "HTTPS common dirs",
+      "context": "target",
+      "command": "gobuster dir -k -u {{httpsUrl}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-https-common.txt"
+    },
+    {
+      "label": "FFUF common dirs",
+      "context": "target",
+      "command": "ffuf -u {{httpUrl}}/FUZZ -w /usr/share/wordlists/dirb/common.txt"
     }
+  ],
+  "FTP": [
+    { "label": "Connect to FTP", "context": "target", "command": "ftp {{targetIp}} {{ftpPort}}" },
+    { "label": "Anonymous login (lftp)", "context": "target", "command": "lftp -u anonymous,anonymous@ -p {{ftpPort}} {{targetIp}}" },
+    { "label": "List files anonymously (curl)", "context": "target", "command": "curl --user 'anonymous:anonymous@' --list-only {{ftpUrl}}/" },
+    { "label": "Download file anonymously", "description": "Replace REMOTE_FILE and LOCAL_FILE.", "context": "target", "command": "curl --user 'anonymous:anonymous@' {{ftpUrl}}/REMOTE_FILE -o LOCAL_FILE" },
+    { "label": "Check anonymous access (Nmap)", "context": "target", "command": "nmap -sV -p {{ftpPort}} --script ftp-anon {{targetIp}}" }
   ],
   "Reverse": [
     {

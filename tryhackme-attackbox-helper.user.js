@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.11
+// @version      1.12
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
@@ -22,6 +22,35 @@
         'https://raw.githubusercontent.com/garthheff/' +
         'tryhackme-attackbox-command-helper/main/menus.json';
     const buttonResetTimers = new WeakMap();
+    const serviceDefaults = { http: '80', https: '443', ftp: '21', ssh: '22' };
+
+    function getServicePort(service) {
+        const saved = localStorage.getItem('thm_service_port:' + service);
+        return saved && /^\d+$/.test(saved) && Number(saved) >= 1 &&
+            Number(saved) <= 65535 ? saved : serviceDefaults[service];
+    }
+
+    function promptForServicePort(service) {
+        const value = prompt(service.toUpperCase() + ' port:', getServicePort(service));
+        if (value === null) return;
+        const port = value.trim();
+        if (!/^\d+$/.test(port) || Number(port) < 1 || Number(port) > 65535) {
+            alert('Enter a valid port from 1 to 65535.');
+            return;
+        }
+        localStorage.setItem('thm_service_port:' + service, String(Number(port)));
+    }
+
+    function getServiceValues() {
+        const info = getInfo();
+        return {
+            httpPort: getServicePort('http'), httpsPort: getServicePort('https'),
+            ftpPort: getServicePort('ftp'), sshPort: getServicePort('ssh'),
+            httpUrl: 'http://' + info.targetIp + ':' + getServicePort('http'),
+            httpsUrl: 'https://' + info.targetIp + ':' + getServicePort('https'),
+            ftpUrl: 'ftp://' + info.targetIp + ':' + getServicePort('ftp')
+        };
+    }
     let remoteMenuConfig = null;
 
     function isMenuConfigUrlConfigured() {
@@ -938,7 +967,7 @@
             return;
         }
 
-        copy(commandBuilder(info.targetIp), button);
+        copy(fillCommandTemplate(commandBuilder(info.targetIp), {}), button);
     }
 
     function copyReverseShell(button, commandBuilder) {
@@ -960,8 +989,9 @@
     }
 
     function fillCommandTemplate(template, values) {
+        values = Object.assign({}, getServiceValues(), values);
         return String(template).replace(
-            /\{\{(targetIp|attackboxIp|username|password|port)\}\}/g,
+            /\{\{(targetIp|attackboxIp|username|password|port|httpPort|httpsPort|ftpPort|sshPort|httpUrl|httpsUrl|ftpUrl)\}\}/g,
             function (match, key) {
                 return Object.prototype.hasOwnProperty.call(values, key)
                     ? String(values[key])
@@ -1197,7 +1227,7 @@
                 }
 
                 copy(
-                    'ssh ' +
+                    'ssh -p ' + getServicePort('ssh') + ' ' +
                     info.username +
                     '@' +
                     info.attackboxIp,
@@ -1222,7 +1252,7 @@
                 copy(
                     'sshpass -p ' +
                     shellQuote(info.password) +
-                    ' ssh ' +
+                    ' ssh -p ' + getServicePort('ssh') + ' ' +
                     '-o StrictHostKeyChecking=accept-new ' +
                     info.username +
                     '@' +
@@ -1306,7 +1336,7 @@
                                 return (
                                     'sshpass -p ' +
                                     shellQuote(info.password) +
-                                    ' scp -o StrictHostKeyChecking=accept-new ' +
+                                    ' scp -P ' + getServicePort('ssh') + ' -o StrictHostKeyChecking=accept-new ' +
                                     '"/LOCAL/PATH/TO/FILE" ' +
                                     info.username +
                                     '@' +
@@ -1329,7 +1359,7 @@
                                 return (
                                     'sshpass -p ' +
                                     shellQuote(info.password) +
-                                    ' scp -o StrictHostKeyChecking=accept-new ' +
+                                    ' scp -P ' + getServicePort('ssh') + ' -o StrictHostKeyChecking=accept-new ' +
                                     info.username +
                                     '@' +
                                     info.attackboxIp +
@@ -1436,7 +1466,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 ' -w /usr/share/wordlists/dirb/common.txt ' +
                                 '-o gobuster-common.txt'
                             );
@@ -1449,7 +1479,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 ' -w /usr/share/wordlists/dirb/common.txt ' +
                                 '-x php,txt,html,js,bak,zip ' +
                                 '-o gobuster-common-ext.txt'
@@ -1463,7 +1493,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ' +
                                 '-o gobuster-medium.txt'
                             );
@@ -1476,7 +1506,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ' +
                                 '-x php,txt,html,js,bak,zip ' +
                                 '-o gobuster-medium-ext.txt'
@@ -1490,7 +1520,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -k -u https://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('https') +
                                 ' -w /usr/share/wordlists/dirb/common.txt ' +
                                 '-o gobuster-https-common.txt'
                             );
@@ -1503,7 +1533,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster vhost -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 ' -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt ' +
                                 '--append-domain ' +
                                 '-o gobuster-vhost.txt'
@@ -1517,7 +1547,7 @@
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'ffuf -u http://' +
-                                targetIp +
+                                targetIp + ':' + getServicePort('http') +
                                 '/FUZZ ' +
                                 '-w /usr/share/wordlists/dirb/common.txt'
                             );
@@ -1528,6 +1558,23 @@
         );
 
         content.appendChild(gobusterMenu);
+
+        content.appendChild(makeMenuButton('Ports', Object.keys(serviceDefaults).map(function (service) {
+            return {
+                label: 'Set ' + service.toUpperCase() + ' port',
+                action: function () { promptForServicePort(service); }
+            };
+        })));
+
+        content.appendChild(makeMenuButton('FTP', resolveMenuOptions('FTP', [
+            { label: 'Connect to FTP', context: 'target', command: 'ftp {{targetIp}} {{ftpPort}}' },
+            { label: 'Anonymous login (lftp)', context: 'target', command: "lftp -u anonymous,anonymous@ -p {{ftpPort}} {{targetIp}}" },
+            { label: 'List files anonymously (curl)', context: 'target', command: "curl --user 'anonymous:anonymous@' --list-only {{ftpUrl}}/" },
+            { label: 'Download file anonymously', context: 'target', command: "curl --user 'anonymous:anonymous@' {{ftpUrl}}/REMOTE_FILE -o LOCAL_FILE" },
+            { label: 'Check anonymous access (Nmap)', context: 'target', command: 'nmap -sV -p {{ftpPort}} --script ftp-anon {{targetIp}}' }
+        ].map(function (item) {
+            return Object.assign({}, item, { action: makeRemoteMenuAction(item) });
+        }))));
 
         const reverseShellMenu = makeMenuButton(
             'Reverse',
