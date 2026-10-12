@@ -13,19 +13,25 @@
   ],
   "Gobuster": [
     {
-      "label": "Common dirs",
+      "label": "HTTP dirs — selected wordlist",
       "context": "target",
-      "command": "gobuster dir -u {{httpUrl}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-common.txt"
+      "command": "gobuster dir -u {{httpUrl}} -w {{wordlist}} -o gobuster-http.txt"
     },
     {
-      "label": "HTTPS common dirs",
+      "label": "HTTPS dirs — selected wordlist",
       "context": "target",
-      "command": "gobuster dir -k -u {{httpsUrl}} -w /usr/share/wordlists/dirb/common.txt -o gobuster-https-common.txt"
+      "command": "gobuster dir -k -u {{httpsUrl}} -w {{wordlist}} -o gobuster-https.txt"
     },
     {
-      "label": "FFUF common dirs",
+      "label": "FFUF dirs — selected wordlist",
       "context": "target",
-      "command": "ffuf -u {{httpUrl}}/FUZZ -w /usr/share/wordlists/dirb/common.txt"
+      "command": "ffuf -u {{httpUrl}}/FUZZ -w {{wordlist}}"
+    },
+    {
+      "label": "VHost enum — selected DNS wordlist",
+      "description": "Replace TARGET_DOMAIN with the target's domain; uses the HTTP port setting.",
+      "context": "target",
+      "command": "gobuster vhost -u http://TARGET_DOMAIN:{{httpPort}} -w {{dnsWordlist}} --append-domain -o gobuster-vhost.txt"
     }
   ],
   "FTP": [

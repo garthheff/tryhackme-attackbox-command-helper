@@ -41,6 +41,10 @@ For an `attackbox` item, set `requirePassword` to `true` if it needs the passwor
 
 ## Service ports and FTP
 
+The **Gobuster** menu has **Set web wordlist (Gobuster / FFUF)** and **Set DNS / VHost wordlist** options. Enter a preset number or a custom absolute path. Choices persist locally and are shell-quoted in copied commands. Web presets include DIRB common/big, DirBuster small/medium, SecLists common, RAFT small words, and RAFT medium directories. DNS presets include the SecLists top 5,000/20,000/110,000 subdomain lists. These paths were verified on the AttackBox; SecLists is installed under `/usr/share/wordlists/SecLists`.
+
+Templates use `{{wordlist}}` for the selected web list and `{{dnsWordlist}}` for DNS/VHost lists. Do not add quotes around these placeholders: the helper quotes the paths. VHost commands require replacing `TARGET_DOMAIN` with the target's domain.
+
 Set HTTP (80) and HTTPS (443) ports in **Gobuster**, FTP (21) in **FTP**, and SSH (22) in **Files**. Values persist across room visits and are independent of the reverse-shell/listener port. Commands use the current values at click time. SSH and SCP use the SSH setting for the AttackBox; web and FTP commands use the target IP.
 
 Each action requesting AttackBox information clears the saved AttackBox IP, username, and password and reads the information panel again. Target information and port settings are preserved. If refresh fails, the action does not copy commands using old credentials. There is no manual Clear button.

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.13
+// @version      1.14
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
@@ -23,6 +23,47 @@
         'tryhackme-attackbox-command-helper/main/menus.json';
     const buttonResetTimers = new WeakMap();
     const serviceDefaults = { http: '80', https: '443', ftp: '21', ssh: '22' };
+    const wordlistChoices = {
+        web: [
+            ['DIRB common — 4,614 lines', '/usr/share/wordlists/dirb/common.txt'],
+            ['DIRB big — 20,469 lines', '/usr/share/wordlists/dirb/big.txt'],
+            ['DirBuster small — 87,664 lines', '/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt'],
+            ['DirBuster medium — 218,275 lines', '/usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt'],
+            ['SecLists common — 4,655 lines', '/usr/share/wordlists/SecLists/Discovery/Web-Content/common.txt'],
+            ['RAFT small words — 43,003 lines', '/usr/share/wordlists/SecLists/Discovery/Web-Content/raft-small-words.txt'],
+            ['RAFT medium directories — 30,000 lines', '/usr/share/wordlists/SecLists/Discovery/Web-Content/raft-medium-directories.txt']
+        ],
+        dns: [
+            ['Subdomains top 5,000', '/usr/share/wordlists/SecLists/Discovery/DNS/subdomains-top1million-5000.txt'],
+            ['Subdomains top 20,000', '/usr/share/wordlists/SecLists/Discovery/DNS/subdomains-top1million-20000.txt'],
+            ['Subdomains top 110,000', '/usr/share/wordlists/SecLists/Discovery/DNS/subdomains-top1million-110000.txt']
+        ]
+    };
+
+    function getWordlist(kind) {
+        return localStorage.getItem('thm_wordlist:' + kind) || wordlistChoices[kind][0][1];
+    }
+
+    function promptForWordlist(kind) {
+        const choices = wordlistChoices[kind];
+        const current = getWordlist(kind);
+        const currentIndex = choices.findIndex(function (choice) { return choice[1] === current; });
+        const value = prompt(
+            'Select ' + kind + ' wordlist by number, or enter an absolute path:\n\n' +
+            choices.map(function (choice, index) { return (index + 1) + '. ' + choice[0]; }).join('\n') +
+            '\n\nCurrent: ' + current,
+            currentIndex >= 0 ? String(currentIndex + 1) : current
+        );
+        if (value === null) return;
+        const entered = value.trim();
+        const choice = /^\d+$/.test(entered) ? choices[Number(entered) - 1] : null;
+        const path = choice ? choice[1] : entered;
+        if (!path.startsWith('/') || /[\r\n\0]/.test(path)) {
+            alert('Choose a listed number or enter an absolute wordlist path.');
+            return;
+        }
+        localStorage.setItem('thm_wordlist:' + kind, path);
+    }
 
     function getServicePort(service) {
         const saved = localStorage.getItem('thm_service_port:' + service);
@@ -44,6 +85,8 @@
     function getServiceValues() {
         const info = getInfo();
         return {
+            wordlist: shellQuote(getWordlist('web')),
+            dnsWordlist: shellQuote(getWordlist('dns')),
             httpPort: getServicePort('http'), httpsPort: getServicePort('https'),
             ftpPort: getServicePort('ftp'), sshPort: getServicePort('ssh'),
             httpUrl: 'http://' + info.targetIp + ':' + getServicePort('http'),
@@ -805,6 +848,13 @@
     }
 
     function makeMenuButton(label, options) {
+        if (label === 'Gobuster') {
+            options = [
+                { label: 'Set web wordlist (Gobuster / FFUF)', action: function () { promptForWordlist('web'); } },
+                { label: 'Set DNS / VHost wordlist', action: function () { promptForWordlist('dns'); } },
+                { separator: true }
+            ].concat(options);
+        }
         const menuServices = { Files: ['ssh'], Gobuster: ['http', 'https'], FTP: ['ftp'] };
         if (menuServices[label]) {
             options = menuServices[label].map(function (service) {
@@ -980,7 +1030,7 @@
     function fillCommandTemplate(template, values) {
         values = Object.assign({}, getServiceValues(), values);
         return String(template).replace(
-            /\{\{(targetIp|attackboxIp|username|password|port|httpPort|httpsPort|ftpPort|sshPort|httpUrl|httpsUrl|ftpUrl)\}\}/g,
+            /\{\{(targetIp|attackboxIp|username|password|port|httpPort|httpsPort|ftpPort|sshPort|httpUrl|httpsUrl|ftpUrl|wordlist|dnsWordlist)\}\}/g,
             function (match, key) {
                 return Object.prototype.hasOwnProperty.call(values, key)
                     ? String(values[key])
@@ -1450,26 +1500,26 @@
             'Gobuster',
             resolveMenuOptions('Gobuster', [
                 {
-                    label: 'Common dirs',
+                    label: 'HTTP dirs — selected wordlist',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
                                 targetIp + ':' + getServicePort('http') +
-                                ' -w /usr/share/wordlists/dirb/common.txt ' +
+                                ' -w {{wordlist}} ' +
                                 '-o gobuster-common.txt'
                             );
                         });
                     }
                 },
                 {
-                    label: 'Common dirs + extensions',
+                    label: 'HTTP dirs + extensions',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
                                 targetIp + ':' + getServicePort('http') +
-                                ' -w /usr/share/wordlists/dirb/common.txt ' +
+                                ' -w {{wordlist}} ' +
                                 '-x php,txt,html,js,bak,zip ' +
                                 '-o gobuster-common-ext.txt'
                             );
@@ -1477,26 +1527,26 @@
                     }
                 },
                 {
-                    label: 'Directory medium',
+                    label: 'HTTP dirs — selected wordlist',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
                                 targetIp + ':' + getServicePort('http') +
-                                ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ' +
+                                ' -w {{wordlist}} ' +
                                 '-o gobuster-medium.txt'
                             );
                         });
                     }
                 },
                 {
-                    label: 'Directory medium + extensions',
+                    label: 'HTTP dirs + extensions',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -u http://' +
                                 targetIp + ':' + getServicePort('http') +
-                                ' -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt ' +
+                                ' -w {{wordlist}} ' +
                                 '-x php,txt,html,js,bak,zip ' +
                                 '-o gobuster-medium-ext.txt'
                             );
@@ -1504,13 +1554,13 @@
                     }
                 },
                 {
-                    label: 'HTTPS common dirs',
+                    label: 'HTTPS dirs — selected wordlist',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'gobuster dir -k -u https://' +
                                 targetIp + ':' + getServicePort('https') +
-                                ' -w /usr/share/wordlists/dirb/common.txt ' +
+                                ' -w {{wordlist}} ' +
                                 '-o gobuster-https-common.txt'
                             );
                         });
@@ -1523,7 +1573,7 @@
                             return (
                                 'gobuster vhost -u http://' +
                                 targetIp + ':' + getServicePort('http') +
-                                ' -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt ' +
+                                ' -w {{dnsWordlist}} ' +
                                 '--append-domain ' +
                                 '-o gobuster-vhost.txt'
                             );
@@ -1531,14 +1581,14 @@
                     }
                 },
                 {
-                    label: 'FFUF common dirs',
+                    label: 'FFUF dirs — selected wordlist',
                     action: function (button) {
                         copyTargetCommand(button, function (targetIp) {
                             return (
                                 'ffuf -u http://' +
                                 targetIp + ':' + getServicePort('http') +
                                 '/FUZZ ' +
-                                '-w /usr/share/wordlists/dirb/common.txt'
+                                '-w {{wordlist}}'
                             );
                         });
                     }
