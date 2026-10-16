@@ -41,6 +41,8 @@ For an `attackbox` item, set `requirePassword` to `true` if it needs the passwor
 
 ## Service ports and FTP
 
+The **Tools** menu opens services on the current AttackBox in a new tab: CyberChef at `http://ATTACKBOX_IP:7777/`, Reverse Shell Generator at `http://ATTACKBOX_IP:7778/`, and NICE DCV at `https://ATTACKBOX_IP:8443/`. Each click refreshes the AttackBox information first. These links expect the services to already be running and reachable from your browser.
+
 The **Nmap** menu includes HTTP/HTTPS service scans with `-Pn`, a fast full-TCP discovery scan (Stage 1), a focused service/default-script scan (Stage 2), and a combined full-TCP service scan. Stage 2 prompts for comma-separated open ports (for example `22,80,8080`). HTTP/HTTPS port settings are also available inside Nmap and are shared with Gobuster. Set HTTP to `8080` to scan a web service there. Commands use the current room's target IP and are copied, not executed. `-Pn` skips host discovery; it does not itself confirm that the target is reachable.
 
 Remote items may use context `targetPorts` with `{{scanPorts}}` to prompt for validated TCP ports.

@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.16
+// @version      1.17
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
 // @grant        GM_xmlhttpRequest
+// @grant        GM_openInTab
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
 
@@ -1910,6 +1911,25 @@
         );
 
         content.appendChild(listenerMenu);
+
+        content.appendChild(makeMenuButton('Tools', [
+            { label: 'CyberChef', scheme: 'http', port: 7777 },
+            { label: 'Reverse Shell Generator', scheme: 'http', port: 7778 },
+            { label: 'NICE DCV', scheme: 'https', port: 8443 }
+        ].map(function (tool) {
+            return {
+                label: tool.label,
+                description: 'Open ' + tool.label + ' on the AttackBox (port ' + tool.port + ')',
+                action: async function () {
+                    const info = await getInfoWithAttackBoxLoaded();
+                    if (needAttackBoxIp(info)) return;
+                    GM_openInTab(tool.scheme + '://' + info.attackboxIp + ':' + tool.port + '/', {
+                        active: true,
+                        insert: true
+                    });
+                }
+            };
+        })));
 
         document.body.appendChild(bar);
 
