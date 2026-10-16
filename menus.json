@@ -1,5 +1,37 @@
 {
   "Nmap": [
+    { "heading": "No ping / filtered discovery" },
+    {
+      "label": "HTTP port — no ping, scripts and versions",
+      "description": "Uses the HTTP port selected in this menu; set it to 8080 for a service on port 8080.",
+      "context": "target",
+      "command": "sudo nmap -Pn -sV -sC -p {{httpPort}} -oN nmap-web.txt {{targetIp}}"
+    },
+    {
+      "label": "HTTPS port — no ping, scripts and versions",
+      "context": "target",
+      "command": "sudo nmap -Pn -sV -sC -p {{httpsPort}} -oN nmap-https.txt {{targetIp}}"
+    },
+    {
+      "label": "Stage 1 — all TCP ports, fast, no ping",
+      "description": "Discover open ports first, then use Stage 2 for scripts and service versions.",
+      "context": "target",
+      "command": "sudo nmap -Pn -p- --min-rate 5000 -oN nmap-ports.txt {{targetIp}}"
+    },
+    {
+      "label": "Stage 2 — scan discovered ports",
+      "description": "Prompts for a comma-separated list of open ports from Stage 1.",
+      "context": "targetPorts",
+      "command": "sudo nmap -Pn -sV -sC -p {{scanPorts}} -oN nmap-services.txt {{targetIp}}"
+    },
+    {
+      "label": "All TCP ports — no ping, scripts and versions",
+      "description": "Combined discovery and service scan; may take longer than two-stage scanning.",
+      "context": "target",
+      "command": "sudo nmap -Pn -p- --min-rate 5000 -sV -sC -oN nmap-pn-all.txt {{targetIp}}"
+    },
+    { "separator": true },
+    { "heading": "Standard discovery" },
     {
       "label": "Top ports - scripts and versions",
       "context": "target",

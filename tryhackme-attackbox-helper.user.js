@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         TryHackMe AttackBox Command Helper
 // @namespace    https://tryhackme.com/
-// @version      1.15
+// @version      1.16
 // @description  Movable command bar for AttackBox SSH, FileZilla/SCP transfer, target IP, nmap, gobuster, reverse shell, and listener commands
 // @match        https://tryhackme.com/*
 // @grant        GM_setClipboard
@@ -106,6 +106,7 @@
         }
 
         const allowedContexts = [
+            'targetPorts',
             'target',
             'reverse',
             'listener',
@@ -849,7 +850,7 @@
                 { separator: true }
             ].concat(options);
         }
-        const menuServices = { Files: ['ssh'], Gobuster: ['http', 'https'], FTP: ['ftp'] };
+        const menuServices = { Files: ['ssh'], Gobuster: ['http', 'https'], Nmap: ['http', 'https'], FTP: ['ftp'] };
         if (menuServices[label]) {
             options = menuServices[label].map(function (service) {
                 return {
@@ -1072,7 +1073,7 @@
     function fillCommandTemplate(template, values) {
         values = Object.assign({}, getServiceValues(), values);
         return String(template).replace(
-            /\{\{(targetIp|attackboxIp|username|password|port|httpPort|httpsPort|ftpPort|sshPort|httpUrl|httpsUrl|ftpUrl|wordlist|dnsWordlist)\}\}/g,
+            /\{\{(targetIp|attackboxIp|username|password|port|httpPort|httpsPort|ftpPort|sshPort|httpUrl|httpsUrl|ftpUrl|wordlist|dnsWordlist|scanPorts)\}\}/g,
             function (match, key) {
                 return Object.prototype.hasOwnProperty.call(values, key)
                     ? String(values[key])
@@ -1082,6 +1083,25 @@
     }
 
     function makeRemoteMenuAction(item) {
+        if (item.context === 'targetPorts') {
+            return function (button) {
+                const info = getInfo();
+                if (needTargetIp(info)) return;
+                const entered = prompt('Open TCP ports from Stage 1 (comma-separated, e.g. 22,80,8080):', '22,80,8080');
+                if (entered === null) return;
+                const ports = entered.split(',').map(function (port) { return port.trim(); });
+                if (!ports.every(function (port) {
+                    return /^\d+$/.test(port) && Number(port) >= 1 && Number(port) <= 65535;
+                })) {
+                    alert('Enter comma-separated port numbers from 1 to 65535.');
+                    return;
+                }
+                copy(fillCommandTemplate(item.command, {
+                    targetIp: info.targetIp,
+                    scanPorts: ports.map(Number).join(',')
+                }), button);
+            };
+        }
         if (item.context === 'setPort') {
             return function () {
                 promptForPort();
@@ -1459,6 +1479,16 @@
         const nmapMenu = makeMenuButton(
             'Nmap',
             resolveMenuOptions('Nmap', [
+                ...[
+                    { heading: 'No ping / filtered discovery' },
+                    { label: 'HTTP port — no ping, scripts and versions', context: 'target', command: 'sudo nmap -Pn -sV -sC -p {{httpPort}} -oN nmap-web.txt {{targetIp}}' },
+                    { label: 'HTTPS port — no ping, scripts and versions', context: 'target', command: 'sudo nmap -Pn -sV -sC -p {{httpsPort}} -oN nmap-https.txt {{targetIp}}' },
+                    { label: 'Stage 1 — all TCP ports, fast, no ping', context: 'target', command: 'sudo nmap -Pn -p- --min-rate 5000 -oN nmap-ports.txt {{targetIp}}' },
+                    { label: 'Stage 2 — scan discovered ports', context: 'targetPorts', command: 'sudo nmap -Pn -sV -sC -p {{scanPorts}} -oN nmap-services.txt {{targetIp}}' },
+                    { separator: true }
+                ].map(function (item) {
+                    return item.command ? Object.assign({}, item, { action: makeRemoteMenuAction(item) }) : item;
+                }),
                 {
                     label: 'Top ports - scripts and versions',
                     action: function (button) {

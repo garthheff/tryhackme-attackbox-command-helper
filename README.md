@@ -41,6 +41,10 @@ For an `attackbox` item, set `requirePassword` to `true` if it needs the passwor
 
 ## Service ports and FTP
 
+The **Nmap** menu includes HTTP/HTTPS service scans with `-Pn`, a fast full-TCP discovery scan (Stage 1), a focused service/default-script scan (Stage 2), and a combined full-TCP service scan. Stage 2 prompts for comma-separated open ports (for example `22,80,8080`). HTTP/HTTPS port settings are also available inside Nmap and are shared with Gobuster. Set HTTP to `8080` to scan a web service there. Commands use the current room's target IP and are copied, not executed. `-Pn` skips host discovery; it does not itself confirm that the target is reachable.
+
+Remote items may use context `targetPorts` with `{{scanPorts}}` to prompt for validated TCP ports.
+
 The **Gobuster** menu has expandable **Set web wordlist (Gobuster / FFUF)** and **Set DNS / VHost wordlist** sections. Expand a section and click a preset; the selected list is marked with a check. **Custom path…** lets you enter an absolute path. Choices persist locally and are shell-quoted in copied commands. Web presets include DIRB common/big, DirBuster small/medium, SecLists common, RAFT small words, and RAFT medium directories. DNS presets include the SecLists top 5,000/20,000/110,000 subdomain lists. These paths were verified on the AttackBox; SecLists is installed under `/usr/share/wordlists/SecLists`.
 
 Templates use `{{wordlist}}` for the selected web list and `{{dnsWordlist}}` for DNS/VHost lists. Do not add quotes around these placeholders: the helper quotes the paths. VHost commands require replacing `TARGET_DOMAIN` with the target's domain.
